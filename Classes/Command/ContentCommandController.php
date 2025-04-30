@@ -38,7 +38,7 @@ class ContentCommandController extends CommandController
      * @param string $filename Filename to write XML to. Resources directory will be created at same path of Filename
      * @param boolean $tidy
      * @param ?string $nodeTypeFilter Filter the node type of the nodes, allows complex expressions (e.g. "Neos.Neos:Page", "!Neos.Neos:Page,Neos.Neos:Text")
-     * @param ?string $workspace
+     * @param ?string $workspace The workspace name to export from. If not set, the live workspace will be used.
      * @throws \Neos\Flow\Mvc\Exception\StopActionException
      */
     public function exportCommand(string $siteNodeName, string $sourceNodeIdentifier, string $filename, bool $tidy = true, ?string $nodeTypeFilter = null, ?string $workspace = null)
@@ -51,7 +51,7 @@ class ContentCommandController extends CommandController
 
         /** @var ContentContext $contentContext */
         $contentContext = $this->contextFactory->create([
-            'workspaceName' => $workspace,
+            'workspaceName' => $workspace ?? 'live',
             'currentSite' => $site,
             'invisibleContentShown' => true,
             'inaccessibleContentShown' => true
@@ -81,13 +81,13 @@ class ContentCommandController extends CommandController
      * Import node tree from given XML file into target node
      *
      * @param string $siteNodeName Site node name
-     * @param string $targetNodeIdentifier Target node identifier under which the node tree will be imported
+     * @param string $targetNodeIdentifier Target node identifier of the parent under which the node tree will be imported
      * @param string $filename Filename to read XML from
      * @throws \Neos\Flow\Mvc\Exception\StopActionException
      */
-    public function importCommand($siteNodeName, $targetNodeIdentifier, $filename)
+    public function importCommand(string $siteNodeName, string $targetNodeIdentifier, string $filename)
     {
-        if (! is_file($filename)) {
+        if (!is_file($filename)) {
             $this->outputLine('<error>File "%s" not found</error>', [$filename]);
             $this->quit(1);
         }
@@ -105,7 +105,12 @@ class ContentCommandController extends CommandController
             'inaccessibleContentShown' => true
         ]);
 
-        $targetNode = $contentContext->getNodeByIdentifier($targetNodeIdentifier);
+        if ($targetNodeIdentifier === '') {
+            $targetNode = $contentContext->getCurrentSiteNode();
+        } else {
+            $targetNode = $contentContext->getNodeByIdentifier($targetNodeIdentifier);
+        }
+
         if ($targetNode === null) {
             $this->outputLine('<error>No node with identifier "%s" found</error>', [$targetNodeIdentifier]);
             $this->quit(1);
